@@ -1,0 +1,85 @@
+from types import NoneType
+from openpyxl import load_workbook
+import requests
+from bs4 import BeautifulSoup as BS
+from bs4 import BeautifulSoup
+from IPython.display import Image, display
+import pandas as pd
+from tqdm import tqdm
+import time
+import json
+
+#page = requests.get(url2)
+
+#soup = BeautifulSoup(page.text, 'html.parser')
+#news_items = soup.find_all(class_='ArtV2Default_wrapper__ENxvA ArtV2Default_wrapper__adaptive__2tegx ArtV2Default_v4__bVeTN')
+url_link = 'https://kenwood.ru'
+url = 'https://kenwood.ru/shop'
+response_url = requests.get(url).text
+soup_url = BeautifulSoup(response_url, 'html.parser')
+category_items_url = soup_url.find_all(class_='shop-cart')
+
+for item in category_items_url:                                                                 # Получаем название категрии товаров
+    title = item.find(class_='shop-cart__title').text
+    print('\n' +'Вкладка: ' + title.strip())
+    link_category = url_link + item['href']
+    print(link_category + '/n')                                                                 # Получем ссылку категории
+
+    for i in range(1, 10):                                                                      #Чекаем каждую станицу раздела link_category
+            url = link_category + '/' + str(i)
+            response = requests.get(url).text
+            soup = BeautifulSoup(response, 'html.parser')
+            products_item = soup.find_all(class_='product-card--shop')
+
+            for item in products_item:                                                          #Бегаем по i странице
+        
+                if item.find(class_='card-item__display-title') != None:                        # "Если карточка товара была обнаружена", т.к там есть рекламные контейнеры с таким классом
+                    title = item.find(class_='card-item__display-title').text                   # Наименование товара
+                    full_title = item.find(class_='card-item__title').text                      # Полное наименование товара
+                    link_product = url_link + item.select_one('.card-item > a')['href']         # Ссылка на товар
+                    print(link_product)
+                    print('Наименование: ' + title.strip() + '\n' +
+                  'Полное наименование: ' + full_title.strip())
+                    
+                    if item.find(class_='prev') != None:                                        # Если есть 2 цены выводим по отдельности 
+                        full_cost = item.find(class_='prev').text
+                        full_cost = ''.join(full_cost.split())
+                        print('Полная стоимость: ' + full_cost[:-1] + ' Руб')
+                        lower_price = item.find(class_='curr').text
+                        lower_price = ''.join(lower_price.split())
+                        print('Сниженная стоимость: ' + lower_price[:-1] + ' Руб')
+
+                    else:                                                                       # Иначе выводим одну цену
+                        cost = item.find(class_='curr').text
+                        cost = ''.join(cost.split())
+                        print('Полная стоимость: ' + cost[:-1] + ' Руб')
+
+                    if item.find(class_='label label-orange') != None:                          # Если есть дополнительная информация в карточке
+                        additional = item.find(class_='label label-orange').text
+                        if additional == 'Хит продаж':
+                            print(additional)
+                        elif additional == 'New':
+                            print('Новинка')
+                        else:
+                            pass                                                                # Иначе пропускаем условие
+                        
+                    if item.find(class_='label label-orange label-gift') != None:               # Проверяем наличие подарка
+                        print('При покупке предусмотрен подарок')
+                    else: pass                                                                  # Иначе пропускаем уловие
+
+                    if item.find(class_='label label-purple') != None:                          # Предзаказ\скидка - указываются в одном классе
+                        percent = item.find(class_='label label-purple').text
+                        if percent == 'Предзаказ':
+                            print('Только по предзаказу')
+                        else: 
+                            print('Cкидка ' + percent.strip())
+
+
+                    if item.find(class_='not-available') != None:                               # Указано ли отсутствие товара
+                        not_available = item.find(class_='not-available').text               
+                        if not_available == 'Нет в наличии':
+                            print('Нет в наличии' + '\n')
+                    else:                                                                       # Иначе в наличии
+                        print('В наличии' + '\n')
+                else:
+                    pass
